@@ -25,11 +25,10 @@
           buildInputs = [
             pkgs.cargo
             pkgs.rustc
-            pkgs.linuxKernel.packages.linux_zen.perf
+            pkgs.perf
             pkgs.cargo-cross
             pkgs.cargo-release
-            pkgs.htslib
-            pkgs.samtools
+            pkgs.svelte-language-server
 
             # For building
             pkgs.openssl
@@ -37,17 +36,11 @@
             pkgs.pkg-config
             pkgs.stdenv.cc.cc.lib
 
+            # For testing
+            pkgs.hurl
             # For python package
             # pkgs.python3
             # pkgs.maturin
-
-            # Python dependencies
-            (pkgs.python3.withPackages (
-              ps: with ps; [
-                pysam
-                numpy
-              ]
-            ))
 
             # System libraries
             pkgs.zlib

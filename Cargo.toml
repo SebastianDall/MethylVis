@@ -1,6 +1,13 @@
-[package]
+[workspace]
+resolver = "2"
+members = [
+  "./crates/mag_core",
+  "./crates/mag_server",
+]
+
+
+[workspace.package]
 name = "contam-map"
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]

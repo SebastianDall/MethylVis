@@ -1,0 +1,22 @@
+[package]
+name = "mag_server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+mag_core = { path = "../mag_core" }
+tokio = { version = "1.49.0", features = ["full"] }
+tower = "0.5.2"
+thiserror = "2.0.17"
+serde_json = "1.0.149"
+serde = { version = "1.0.228", features = ["derive"] }
+axum = { version = "0.8.8", features = ["macros"] }
+axum-extra = "0.12.5"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
+ts-rs = "11.1.0"
+toml = "0.9.11"
+
+
+[dev-dependencies]
+tempfile = "3"
