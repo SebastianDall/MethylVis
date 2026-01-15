@@ -1,10 +1,11 @@
 <script lang="ts">
 	import type { ErrorResponse } from "../bindings/ErrorResponse";
 
-	let { selectedProject } = $props();
+	let { selectedProject, selectedContigs = $bindable([]) } = $props();
 	
 
 	let bins = $state<string[]>([]);
+	let selectedBins = $state<string[]>([]);
   let loading = $state(false);
   let error = $state<string | null>(null);
   let fetchTrigger = $state(0);
@@ -49,7 +50,47 @@
   function refresh() {
     fetchTrigger += 1;
   }
+
+  async function toggleBinContigs(bin: string) {
+    console.log("Fetching contigs in bin for: ", bin);
+    console.log("Selected contigs are:", selectedContigs);
+    error = null;
+
+    try {
+    	const response = await fetch(`/api/projects/${selectedProject}/contigs/${bin}`);
+
+    	if (!response.ok) {
+    		const error = await response.json() as ErrorResponse;
+    		throw new Error(error.message)
+    	}
+
+      const contigs: string[] = await response.json();
+      console.log("Fethced contigs: ",contigs);
+
+      const allSelected = contigs.every(c => selectedContigs.includes(c));
+
+      if (!allSelected) {
+        const newContigs = contigs.filter(c=> !selectedContigs.includes(c));
+        console.log("Adding contigs");
+        selectedContigs = [...selectedContigs, ...newContigs];
+        selectedBins = [...selectedBins, bin];
+      } else {
+        console.log("Removing contigs");
+        selectedContigs = selectedContigs.filter((c) => !contigs.includes(c));
+        selectedBins = selectedBins.filter((b) => b !== bin);
+        console.log("bins selected: ", selectedBins);
+      }
+      console.log("selectedContigs after filtering bin", selectedContigs);
+    
+    } catch (err) {
+      error = err instanceof Error ? err.message : "An unknown error has occurred";
+    } finally {
+      loading=false;
+    };
+    
+  }
 </script>
+
 
 
 <div class="flex flex-col w-full p-4 space-y-4">
@@ -72,7 +113,7 @@
     <ul class="space-y-2">
       {#each bins as bin}
         <li class="border rounded-lg overflow-hidden">
-          <button class="w-full text-left px-4 py-2 flex items-center hover:bg-gray-50">
+          <button onclick={() => (toggleBinContigs(bin))} class="w-full text-left px-4 py-2 flex items-center hover:bg-gray-50 {selectedBins.includes(bin) ? 'bg-blue-400 text-white' : ''}">
             {bin}
           </button>
         </li>
