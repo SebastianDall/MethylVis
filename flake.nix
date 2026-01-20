@@ -39,8 +39,8 @@
             # For testing
             pkgs.hurl
             # For python package
-            # pkgs.python3
-            # pkgs.maturin
+            pkgs.python3
+            
 
             # System libraries
             pkgs.zlib
