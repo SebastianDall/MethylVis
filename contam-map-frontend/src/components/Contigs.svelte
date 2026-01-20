@@ -59,6 +59,18 @@
       }
   }
 
+  // $effect(() => {
+  //   selectedContigs;
+  //   contigs = contigs.filter((c) => !selectedContigs.includes(c));
+  //   contigs = [...selectedContigs, ...contigs];
+    
+  // })
+  let orderedContigs = $derived.by(() => {
+    const remaining = contigs.filter((c) => !selectedContigs.includes(c));
+    return [...selectedContigs, ...remaining];
+    
+  })
+
   function refresh() {
     fetchTrigger += 1;
   }
@@ -83,7 +95,7 @@
     <p class="text-gray-500">No bins found</p>
   {:else}
     <ul class="space-y-2">
-      {#each contigs as contig}
+      {#each orderedContigs as contig}
         <li class="border rounded-lg overflow-hidden">
           <button onclick={() => toggleContig(contig)} class="w-full text-left px-4 py-2 flex items-center hover:bg-gray-50 {selectedContigs.includes(contig) ? 'bg-blue-400 text-white' : ''}">
             {contig}
