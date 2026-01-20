@@ -1,11 +1,12 @@
 <script lang="ts">
+	import type { BinQuality } from "../bindings/BinQuality";
 	import type { ErrorResponse } from "../bindings/ErrorResponse";
 
 	let { selectedProject, selectedContigs = $bindable([]) } = $props();
 	
-
 	let bins = $state<string[]>([]);
 	let selectedBins = $state<string[]>([]);
+	let qualities = $state<BinQuality[]>([]);
   let loading = $state(false);
   let error = $state<string | null>(null);
   let fetchTrigger = $state(0);
@@ -24,8 +25,18 @@
       loading = true;
       error = null;
 
+      const queryParams = new URLSearchParams();
+      if (qualities.length != 0) {
+        qualities.forEach((q) => queryParams.append("quality_filter", q));
+      }
+
+      // let queryParams = "";
+      // if (qualities.length > 0) {
+      //   queryParams = `?quality_filter=${qualities.toString()}`
+      // }
+
       try {
-      	const response = await fetch(`/api/projects/${selectedProject}/bins`);
+      	const response = await fetch(`/api/projects/${selectedProject}/bins?${queryParams}`);
 
       	if (!response.ok) {
       		const error = await response.json() as ErrorResponse;
@@ -89,6 +100,24 @@
     };
     
   }
+
+
+  let binQualityMap: {value: BinQuality, label: string}[] = [
+    {value: "HQ", label: "HQ"},
+    {value: "MQ", label: "MQ"},
+    {value: "LQ", label: "LQ"},
+  ];
+    
+  function toggleBinQualities(quality: BinQuality) {
+    if (qualities.includes(quality)) {
+      qualities = qualities.filter((q) => q !== quality);
+    } else {
+      qualities = [quality, ...qualities];
+    }
+  }
+  
+
+  
 </script>
 
 
@@ -100,7 +129,13 @@
       Refresh
     </button>
   </div>
+  <div class="flex justify-between w-full items-center">
+    {#each binQualityMap as label}
+      <button onclick={() => toggleBinQualities(label.value)} class="border rounded-lg font-bold w-12 hover:bg-blue-400 {qualities.includes(label.value) ? 'bg-blue-600 text-white' : 'bg-white'}">{label.label}</button>
+    {/each}
+  </div>
     
+  <div class="flex flex-col w-full space-y-4">
   {#if loading}
     <p>Loading..</p>
   {:else if !selectedProject}
@@ -111,13 +146,14 @@
     <p class="text-gray-500">No bins found</p>
   {:else}
     <ul class="space-y-2">
-      {#each bins as bin}
+      {#each bins.toSorted() as bin}
         <li class="border rounded-lg overflow-hidden">
-          <button onclick={() => (toggleBinContigs(bin))} class="w-full text-left px-4 py-2 flex items-center hover:bg-gray-50 {selectedBins.includes(bin) ? 'bg-blue-400 text-white' : ''}">
+          <button onclick={() => (toggleBinContigs(bin))} class="w-full text-left px-4 py-2 flex items-center {selectedBins.includes(bin) ? 'bg-blue-600 text-white hover:bg-blue-200' : 'hover:bg-gray-50'}">
             {bin}
           </button>
         </li>
       {/each}
     </ul>
   {/if}
+  </div>
 </div>
