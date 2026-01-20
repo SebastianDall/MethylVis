@@ -8,6 +8,7 @@
   let projectId = $state('');
   let methylationPath = $state('');
   let contigBinPath = $state('');
+  let binQualityPath = $state('');
   let outputPath = $state('');
 
   let loading = $state(false);
@@ -39,6 +40,7 @@
       "project_id": projectId,
       "methylation_data_path": methylationPath,
       "contig_bin_path": contigBinPath,
+      "bin_quality_path": binQualityPath === '' ? null : binQualityPath,
       "output_path": outputPath,
     } as CreateProjectPayload;
     try {
@@ -82,6 +84,12 @@
     id="contig-bin"
     placeholder="Contig bin Data Path"
     bind:value={contigBinPath}
+  />
+  <Input
+    label="Bin Quality Path (optional)"
+    id="bin-quality-path"
+    placeholder="Bin Quality Data Path"
+    bind:value={binQualityPath}
   />
   <Input
     label="Output Path"

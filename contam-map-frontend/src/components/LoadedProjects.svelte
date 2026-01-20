@@ -1,11 +1,13 @@
 <script lang="ts">
-	import type { ErrorResponse } from "../bindings/ErrorResponse";
+	import { Save, Loader } from "lucide-svelte";
+  import type { ErrorResponse } from "../bindings/ErrorResponse";
 	
 	let {refreshKey, selectedProject, onProjectSelect = () => {}} = $props();
 
 	let projects = $state<string[]>([]);
   let loading = $state(false);
   let error = $state<string | null>(null);
+  let saving = $state(false);
 
   $effect(() => {
     async function fetchProjects() {
@@ -33,11 +35,49 @@
 
     fetchProjects();
   });
+
+  async function saveProject() {
+    saving = true;
+
+    try {
+      const response = await fetch(`/api/projects/save`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(selectedProject)
+      });
+
+      if (!response.ok) {
+        let error = await response.json();
+        throw new Error(error.message);
+      }
+
+    } catch (err) {
+      if (err instanceof Error) {
+        error = err.message;
+      } else {
+        error = "Something went wrong during update";
+      }
+    } finally {
+      saving = false;
+    }
+  }
 </script>
 
 
 <div class="flex flex-col w-full p-8 space-y-4">
-  <h2 class="text-xl font-bold">Loaded Projects</h2>
+  <div class="flex items-center w-full justify-between">
+    <h2 class="text-xl font-bold">Loaded Projects</h2>
+    <button onclick={saveProject} class="btn group hover:bg-blue-600 p-2 rounded-lg">
+      {#if saving}
+        <Loader />
+      {:else}
+        <Save class="group-hover:text-white"/>
+      {/if}
+    </button>
+
+  </div>
   {#if loading}
     <p>Loading..</p>
   {:else if error}
