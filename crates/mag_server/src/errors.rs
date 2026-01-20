@@ -18,7 +18,19 @@ pub enum ApiError {
     ProjectNotFound(String),
 
     #[error("Could not create directory toml file: {0}")]
-    ProjectTomlError(String),
+    ProjectFileCreation(String),
+
+    #[error("Polars error: {0}")]
+    Polars(#[from] polars::error::PolarsError),
+
+    #[error("MetadataUpdate error: {0}")]
+    MetadataUpdate(String),
+
+    #[error("Io error: {0}")]
+    Io(String),
+
+    #[error("Query error: {0}")]
+    Query(String),
 }
 
 #[derive(Serialize, TS)]
@@ -37,7 +49,11 @@ impl IntoResponse for ApiError {
             ApiError::DataLoad(msg) => (StatusCode::BAD_REQUEST, msg.to_string()),
             ApiError::ProjectExists(msg) => (StatusCode::CONFLICT, msg),
             ApiError::ProjectNotFound(msg) => (StatusCode::NOT_FOUND, msg),
-            ApiError::ProjectTomlError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
+            ApiError::ProjectFileCreation(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
+            ApiError::Polars(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg.to_string()),
+            ApiError::MetadataUpdate(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
+            ApiError::Io(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
+            ApiError::Query(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
         };
 
         let body = Json(ErrorResponse {
