@@ -13,4 +13,7 @@ pub enum DataError {
 
     #[error("Data assertion error: {0}")]
     DataAssertion(String),
+
+    #[error("Bin Quality error: {0}")]
+    BinQuality(String),
 }

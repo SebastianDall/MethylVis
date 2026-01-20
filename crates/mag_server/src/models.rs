@@ -102,17 +102,24 @@ pub struct Project {
 }
 
 impl Project {
-    pub fn new(
-        id: String,
-        output: PathBuf,
-        methylation_data_path: PathBuf,
-        contig_bin_path: PathBuf,
+    fn from_payload(
+        payload: CreateProjectPayload,
+        contig_metadata: HashMap<String, ContigMetadata>,
+        contig_metadata_path: PathBuf,
     ) -> Result<Self, ApiError> {
         tracing::info!("Creating DataManager");
-        tracing::info!("  methylation_data_path: {:?}", methylation_data_path);
-        tracing::info!("  contig_bin_path: {:?}", contig_bin_path);
+        tracing::info!(
+            "  methylation_data_path: {:?}",
+            payload.methylation_data_path
+        );
+        tracing::info!("  contig_bin_path: {:?}", payload.contig_bin_path);
+        tracing::info!("  methylation_data_path: {:?}", payload.bin_quality_path);
 
-        let data = DataManager::new(&methylation_data_path, &contig_bin_path)?;
+        let data = DataManager::new(
+            &payload.methylation_data_path,
+            &payload.contig_bin_path,
+            payload.bin_quality_path,
+        )?;
         tracing::info!("DataManager created:");
         tracing::info!(
             "  methylation_data rows: {}",
@@ -134,6 +141,7 @@ pub struct CreateProjectPayload {
     pub project_id: String,
     pub methylation_data_path: PathBuf,
     pub contig_bin_path: PathBuf,
+    pub bin_quality_path: Option<PathBuf>,
     pub output_path: PathBuf,
 }
 

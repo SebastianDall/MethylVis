@@ -50,6 +50,26 @@ pub fn parse_contig_bin(path: &Path) -> Result<DataFrame, DataError> {
     Ok(df)
 }
 
+pub fn parse_bin_quality(path: &Path) -> Result<DataFrame, DataError> {
+    let schema = Schema::from_iter(vec![
+        Field::new("bin".into(), DataType::String),
+        Field::new("completeness".into(), DataType::Float64),
+        Field::new("contamination".into(), DataType::Float64),
+    ]);
+
+    let parse_options = CsvParseOptions::default()
+        .with_quote_char(None)
+        .with_separator(b'\t');
+    let reader = CsvReadOptions::default()
+        .with_parse_options(parse_options)
+        .with_has_header(true)
+        .with_schema(Some(schema.into()))
+        .try_into_reader_with_file_path(Some(path.into()))?;
+
+    let df = reader.finish()?;
+    Ok(df)
+}
+
 #[cfg(test)] // This attribute means the following code is only compiled when running tests
 mod tests {
     use super::*; // Import everything from the parent module (lib.rs)
