@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { CreateProjectPayload } from "../bindings/CreateProjectPayload";
 	import type { ErrorResponse } from "../bindings/ErrorResponse";
+	import type { ProjectDetails } from "../bindings/ProjectDetails";
 	import Input from "./Input.svelte";
 
 	let { onSuccess = () => {}} = $props();
@@ -15,7 +15,7 @@
   let error = $state<string | null>(null);
   let success = $state(false);
 
-  async function createProject(formData: CreateProjectPayload) {
+  async function createProject(formData: ProjectDetails) {
   	const response = await fetch('/api/projects/create', {
   		method: 'POST',
   		headers: { 'Content-Type': 'application/json'},
@@ -42,9 +42,9 @@
       "contig_bin_path": contigBinPath,
       "bin_quality_path": binQualityPath === '' ? null : binQualityPath,
       "output_path": outputPath,
-    } as CreateProjectPayload;
+    } as ProjectDetails;
     try {
-      const res = await createProject(formData);
+      await createProject(formData);
 
       success = true;
       onSuccess();
