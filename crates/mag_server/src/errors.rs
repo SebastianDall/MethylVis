@@ -20,9 +20,6 @@ pub enum ApiError {
     #[error("Could not create directory toml file: {0}")]
     ProjectFileCreation(String),
 
-    #[error("Polars error: {0}")]
-    Polars(#[from] polars::error::PolarsError),
-
     #[error("MetadataUpdate error: {0}")]
     MetadataUpdate(String),
 
@@ -50,7 +47,6 @@ impl IntoResponse for ApiError {
             ApiError::ProjectExists(msg) => (StatusCode::CONFLICT, msg),
             ApiError::ProjectNotFound(msg) => (StatusCode::NOT_FOUND, msg),
             ApiError::ProjectFileCreation(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
-            ApiError::Polars(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg.to_string()),
             ApiError::MetadataUpdate(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
             ApiError::Io(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
             ApiError::Query(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
