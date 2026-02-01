@@ -5,8 +5,8 @@ pub enum DataError {
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
 
-    #[error("Polars error: {0}")]
-    Polars(#[from] polars::error::PolarsError),
+    #[error("Read error: {0}")]
+    Read(#[from] csv::Error),
 
     #[error("Data not found: {0}")]
     NotFound(String),
