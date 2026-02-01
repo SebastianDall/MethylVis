@@ -1,55 +1,19 @@
 <script lang="ts">
-	import type { ErrorResponse } from "../bindings/ErrorResponse";
-
-	let { selectedProject, selectedContigs = $bindable([])} = $props();
+	let { selectedProject, selectedContigs = $bindable([]), contigs}: {
+	  selectedProject: string,
+	  selectedContigs: string[],
+	  contigs: string[],
+	} = $props();
 	
 
-	let contigs = $state<string[]>([]);
   let loading = $state(false);
   let error = $state<string | null>(null);
-  let fetchTrigger = $state(0);
 
-  $effect(() => {
-    fetchTrigger;
-    console.log("Effect triggered");
-    // clear bins if no project is selected
-    if (!selectedProject) {
-      contigs = [];
-      return;
+    function clearSelectedContigs() {
+        selectedContigs = [];
     }
-
-    async function fetchContigs() {
-      console.log("Fetching contigs for: ", selectedProject);
-      loading = true;
-      error = null;
-
-      try {
-      	const response = await fetch(`/api/projects/${selectedProject}/contigs`);
-
-      	if (!response.ok) {
-      		const error = await response.json() as ErrorResponse;
-      		throw new Error(error.message)
-      	}
-
-        contigs = await response.json();
-      
-      } catch (err) {
-        error = err instanceof Error ? err.message : "An unknown error has occurred";
-      } finally {
-        loading=false;
-      };
-      
-    }
-
-    console.log("About to call fetchContigs");
-    fetchContigs();
-  });
 
   function toggleContig(contig_id: string) {
-      console.log("toggleContig called with:", contig_id);
-      console.log("Current selectedContigs:", selectedContigs);
-      console.log("Is selected?", selectedContigs.includes(contig_id));
-
       if (!selectedContigs.includes(contig_id)) {
         selectedContigs = [...selectedContigs, contig_id];
         console.log("Added. New selectedContigs:", selectedContigs);
@@ -66,23 +30,22 @@
     
   // })
   let orderedContigs = $derived.by(() => {
-    const remaining = contigs.filter((c) => !selectedContigs.includes(c));
+    let selectedSet = new Set(selectedContigs);
+    const remaining = contigs.filter((c) => !selectedSet.has(c));
     return [...selectedContigs, ...remaining];
-    
   })
+  let selectedSet = $derived(new Set(selectedContigs));
 
-  function refresh() {
-    fetchTrigger += 1;
-  }
+  // function refresh() {
+  //   fetchTrigger += 1;
+  // }
 </script>
 
 
-<div class="flex flex-col w-full p-4 space-y-4">
-  <div class="flex justify-between w-full items-center">
-    <h2 class="text-xl font-bold">Loaded Contigs</h2>
-    <button onclick={refresh} disabled={loading} class="bg-blue-400 rounded-lg w-20 h-8 text-sm font-bold hover:bg-blue-600 text-white">
-      Refresh
-    </button>
+<div class="flex flex-col h-full w-full p-4 space-y-4">
+  <div class="flex justify-between w-full items-center flex-shrink-0">
+    <h2 class="text-xl font-bold">Contigs</h2>
+    <button onclick={() => clearSelectedContigs()} disabled={selectedContigs.length === 0} class="mx-4 px-2 py-1 rounded-lg {selectedContigs.length !== 0 ? 'bg-red-200' : 'bg-gray-200'}">Clear</button>
   </div>
     
   {#if loading}
@@ -92,16 +55,18 @@
   {:else if error}
     <p class="text-red-500">{error}</p>
   {:else if contigs.length === 0}
-    <p class="text-gray-500">No bins found</p>
+    <p class="text-gray-500">No contigs found</p>
   {:else}
+ <div class="flex-1 overflow-y-auto min-h-0">
     <ul class="space-y-2">
       {#each orderedContigs as contig}
-        <li class="border rounded-lg overflow-hidden">
-          <button onclick={() => toggleContig(contig)} class="w-full text-left px-4 py-2 flex items-center hover:bg-gray-50 {selectedContigs.includes(contig) ? 'bg-blue-400 text-white' : ''}">
+        <li class="border rounded-lg text-sm">
+          <button onclick={() => toggleContig(contig)} class="w-full text-left px-4 py-2 flex items-center {selectedSet.has(contig) ? 'bg-blue-600 text-white hover:bg-blue-400' : 'hover:bg-gray-50'}">
             {contig}
           </button>
         </li>
       {/each}
     </ul>
+ </div>
   {/if}
 </div>
