@@ -16,7 +16,6 @@ tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
 ts-rs = "11.1.0"
 toml = "0.9.11"
-polars = { version = "0.52.0", features = ["lazy"] }
 csv = "1.4.0"
 
 
