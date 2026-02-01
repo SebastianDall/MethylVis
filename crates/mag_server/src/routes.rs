@@ -6,8 +6,9 @@ use axum::{
 use crate::{
     SharedState,
     handlers::{
-        get_contigs_in_bin, get_project_bins, get_project_contigs, get_projects, load_project,
-        new_project_handler, query_heatmap_data, save_contig_metadata, update_contig_metadata,
+        get_bin_metadata, get_contigs_in_bin, get_projects,
+        load_project, new_project_handler, query_heatmap_data, save_contig_metadata,
+        update_contig_metadata,
     },
 };
 
@@ -16,8 +17,8 @@ pub fn create_api_router(state: SharedState) -> Router {
         .route("/projects", get(get_projects))
         .route("/projects/create", post(new_project_handler))
         .route("/projects/load", post(load_project))
-        .route("/projects/{project_id}/bins", get(get_project_bins))
-        .route("/projects/{project_id}/contigs", get(get_project_contigs))
+        .route("/projects/{project_id}/bins", get(get_bin_metadata))
+        // .route("/projects/{project_id}/contigs", get(get_project_contigs))
         .route(
             "/projects/{project_id}/contigs/{bin}",
             get(get_contigs_in_bin),
