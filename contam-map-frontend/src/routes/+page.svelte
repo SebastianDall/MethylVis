@@ -6,9 +6,11 @@
 	import LoadProject from "../components/LoadProject.svelte";
 	import ProjectCreation from "../components/ProjectCreation.svelte";
 
-	let refreshKey = $state(0);
-  let selectedProject = $state('');
-  let selectedContigs = $state<string[]>([]);
+    let refreshKey = $state(0);
+    let contigs = $state<string[]>([]);
+    let selectedProject = $state('');
+    let selectedContigs = $state<string[]>([]);
+    let selectedBin = $state<string[] | null>(null);
 
 	function onProjectUpdate() {
 		refreshKey += 1;
@@ -24,7 +26,7 @@
 
 <main class="h-screen bg-gray-300 flex items-center justify-center p-4">
 	<div class="flex w-full h-full gap-4">
-		<div class="bg-white w-md rounded-lg font-bold mb-6 text-center">
+		<div class="bg-white w-md rounded-lg font-bold text-center">
 			<h1>Projects</h1>
 			<ProjectCreation onSuccess={onProjectUpdate} />
 			<LoadProject onSuccess={onProjectUpdate} />
@@ -32,14 +34,14 @@
 				<LoadedProjects {refreshKey} {selectedProject} {onProjectSelect}/>
 			</div>
 		</div>
-		<Heatmap {selectedProject} {selectedContigs} />
+		<Heatmap {selectedProject} {selectedContigs} {selectedBin}/>
 
 		<div class="flex flex-col h-full items-center justify-center">
-			<div class="flex flex-1 card w-64 bg-white rounded-lg mb-6 overflow-y-auto">
-				<Bins {selectedProject} bind:selectedContigs />
+			<div class="flex flex-1 w-64 bg-white rounded-lg mb-4 overflow-y-auto">
+				<Bins {selectedProject} bind:selectedContigs bind:contigs bind:selectedBin/>
 			</div>
-			<div class="flex flex-1 card w-64 bg-white rounded-lg mb-6 overflow-y-auto">
-				<Contigs {selectedProject} bind:selectedContigs />
+			<div class="flex flex-1 w-64 bg-white rounded-lg overflow-y-auto">
+				<Contigs {selectedProject} bind:selectedContigs {contigs}/>
 			</div>
 		</div>
 
