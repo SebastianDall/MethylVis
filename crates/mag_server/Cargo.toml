@@ -17,6 +17,7 @@ tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
 ts-rs = "11.1.0"
 toml = "0.9.11"
 csv = "1.4.0"
+epimetheus-methylome = "1.1.0"
 
 
 [dev-dependencies]

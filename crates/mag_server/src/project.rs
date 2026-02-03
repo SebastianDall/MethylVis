@@ -5,6 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use epimetheus_methylome::Motif;
 use toml;
 
 use mag_core::{
@@ -23,6 +24,7 @@ pub struct Project {
     pub id: String,
     pub outdir: PathBuf,
     pub contig_metadata_path: PathBuf,
+    pub motifs: HashSet<Motif>,
     pub bins: BTreeMap<BinId, Bin>,
     pub contig_methylation: HashMap<ContigId, Contig>,
 }
@@ -56,8 +58,8 @@ impl Project {
             ));
         }
 
-        let contig_methylation = Self::load_methylation(&project_data.methylation_data_path)
-            .map_err(|e| {
+        let (contig_methylation, motifs) =
+            Self::load_methylation(&project_data.methylation_data_path).map_err(|e| {
                 tracing::error!("Error reading methylation file: {}", e.to_string());
                 e
             })?;
@@ -85,6 +87,7 @@ impl Project {
             id: project_data.project_id,
             outdir: project_data.output_path,
             contig_metadata_path: metadata_path,
+            motifs,
             bins,
             contig_methylation,
         };
@@ -94,8 +97,11 @@ impl Project {
         Ok(project)
     }
 
-    fn load_methylation(path: &Path) -> Result<HashMap<ContigId, Contig>, ApiError> {
+    fn load_methylation(
+        path: &Path,
+    ) -> Result<(HashMap<ContigId, Contig>, HashSet<Motif>), ApiError> {
         let mut meth_rdr = MethReader::new(path)?;
+        let mut motif_set = HashSet::new();
 
         let mut contig_meth: HashMap<ContigId, Contig> = HashMap::new();
         for rec in meth_rdr.records() {
@@ -103,6 +109,8 @@ impl Project {
 
             let contig_id = ContigId(res.contig.clone());
             let motif_rec = MotifSignature::try_from(res)?;
+            motif_set.insert(motif_rec.motif.clone());
+
             contig_meth
                 .entry(contig_id.clone())
                 .and_modify(|con| {
@@ -120,7 +128,7 @@ impl Project {
             contig.mean_coverage = contig.derive_mean_coverage();
         }
 
-        Ok(contig_meth)
+        Ok((contig_meth, motif_set))
     }
 
     pub fn load_from_path(path: PathBuf) -> Result<Self, ApiError> {
@@ -132,8 +140,8 @@ impl Project {
         let mut saved_path = project_details.output_path.clone();
         saved_path.push("contig_metadata.csv");
 
-        let contig_methylation = Self::load_methylation(&project_details.methylation_data_path)
-            .map_err(|e| {
+        let (contig_methylation, motifs) =
+            Self::load_methylation(&project_details.methylation_data_path).map_err(|e| {
                 ApiError::Io(format!(
                     "Error loading contig methylation data: {}",
                     e.to_string()
@@ -182,6 +190,7 @@ impl Project {
             id: project_details.project_id,
             outdir: project_details.output_path,
             contig_metadata_path: metadata_path,
+            motifs,
             bins,
             contig_methylation,
         };
@@ -246,64 +255,55 @@ impl Project {
     }
 
     pub fn get_heatmap_data(&self, filters: MethDataFilters) -> Result<HeatmapData, ApiError> {
-        let contigs_filter = match &filters.selection {
-            crate::models::ContigSelection::Bin(b) => self
+        let contigs_filter: Vec<&str> = match filters.selection {
+            crate::models::ContigSelection::Bin(ref b) => self
                 .bins
-                .get(&BinId(b.clone()))
+                .get(&BinId(b.to_string()))
                 .ok_or_else(|| ApiError::Query(format!("Bin '{}' not found.", b)))?
                 .contig_metadata
                 .iter()
-                .map(|c| c.contig_id.0.clone())
+                .map(|c| c.contig_id.0.as_str())
                 .collect(),
-            crate::models::ContigSelection::Contigs(c) => c.clone(),
+            crate::models::ContigSelection::Contigs(ref c) => {
+                c.iter().map(|id| id.as_str()).collect()
+            }
         };
 
         let contigs = self
             .contig_methylation
             .iter()
-            .filter(|(id, _contig)| contigs_filter.contains(&id.0))
+            .filter(|(id, _contig)| contigs_filter.contains(&id.0.as_str()))
             .map(|(_id, contig)| contig)
             .collect::<Vec<&Contig>>();
 
-        let mut all_motif_ids = HashSet::new();
+        // Iter through hashset will provide a random access each time. Therefore
+        // we collect to vector first!
+        let mut motif_vec: Vec<_> = self.motifs.iter().collect();
+
         let mut contig_meth_matrix = Vec::new();
-
-        for contig in &contigs {
-            for (motif_id, motif) in &contig.motifs {
-                if let Some(f) = filters.min_n_motif_obs {
-                    if motif.n_motif_obs < f as u32 {
-                        continue;
-                    }
-                }
-                if let Some(f) = filters.min_coverage {
-                    if motif.mean_coverage < f {
-                        continue;
-                    }
-                }
-
-                all_motif_ids.insert(motif_id.clone());
-            }
-        }
-
-        let mut all_motif_ids: Vec<_> = all_motif_ids.into_iter().collect::<_>();
         for contig in &contigs {
             let mut meth_values = Vec::new();
-            for motif in &all_motif_ids {
+            for motif in &motif_vec {
                 let motif_signature = contig.motifs.get(motif);
-                let val = if let Some(m) = motif_signature {
-                    Some(m.methylation_value.clone())
-                } else {
-                    None
-                };
+                let val = motif_signature.and_then(|m| {
+                    if filters
+                        .min_n_motif_obs
+                        .map_or(false, |f| m.n_motif_obs < f as u32)
+                        || filters.min_coverage.map_or(false, |f| m.mean_coverage < f)
+                    {
+                        None
+                    } else {
+                        Some(m.methylation_value)
+                    }
+                });
                 meth_values.push(val);
             }
-
             contig_meth_matrix.push(meth_values);
         }
 
         if let Some(f) = filters.min_motif_variance {
             let mut retained_motif_idxs = Vec::new();
-            for motif_idx in 0..all_motif_ids.len() {
+            for motif_idx in 0..motif_vec.len() {
                 let values = contig_meth_matrix
                     .iter()
                     .filter_map(|row| row[motif_idx])
@@ -323,7 +323,7 @@ impl Project {
             }
             let filtered_motifs: Vec<_> = retained_motif_idxs
                 .iter()
-                .map(|&idx| all_motif_ids[idx].clone())
+                .map(|&idx| motif_vec[idx])
                 .collect();
 
             contig_meth_matrix = contig_meth_matrix
@@ -331,7 +331,7 @@ impl Project {
                 .map(|row| retained_motif_idxs.iter().map(|&idx| row[idx]).collect())
                 .collect();
 
-            all_motif_ids = filtered_motifs;
+            motif_vec = filtered_motifs;
         }
 
         let contig_ids = contigs.iter().map(|c| c.contig_id.0.clone()).collect();
@@ -345,13 +345,13 @@ impl Project {
                     .map(|c| {
                         let cm = ContigMetadata {
                             contig_id: c.contig_id.0.clone(),
-                            assignment: c.assignment.clone(),
+                            assignment: c.assignment,
                             mean_coverage: self
                                 .contig_methylation
                                 .get(&c.contig_id)
                                 .map(|c| c.mean_coverage)
                                 .unwrap_or(0.0),
-                            note: Some("".to_string()),
+                            note: Some(String::new()),
                         };
                         (c.contig_id.0.clone(), cm)
                     })
@@ -372,7 +372,7 @@ impl Project {
                                 .get(&contig_id)
                                 .map(|c| c.mean_coverage)
                                 .unwrap_or(1.0),
-                            note: Some("".to_string()),
+                            note: Some(String::new()),
                         };
                         (c, cm)
                     })
@@ -384,8 +384,8 @@ impl Project {
 
         let hm = HeatmapData {
             contigs: contig_ids,
-            motifs: all_motif_ids
-                .into_iter()
+            motifs: motif_vec
+                .iter()
                 .map(|m| {
                     format!(
                         "{}_{}_{}",
