@@ -8,6 +8,7 @@
   let loading = $state(false);
   let error = $state<string | null>(null);
   let saving = $state(false);
+  let savingResponse = $state("");
 
   $effect(() => {
     async function fetchProjects() {
@@ -36,6 +37,10 @@
     fetchProjects();
   });
 
+    setTimeout(() => {
+        savingResponse = "";
+        }, 5000);
+
   async function saveProject() {
     saving = true;
 
@@ -53,6 +58,9 @@
         throw new Error(error.message);
       }
 
+      savingResponse = await response.json();
+
+
     } catch (err) {
       if (err instanceof Error) {
         error = err.message;
@@ -66,7 +74,7 @@
 </script>
 
 
-<div class="flex flex-col w-full p-8 space-y-4">
+<div class="flex flex-col h-full w-full p-8 space-y-4">
   <div class="flex items-center w-full justify-between">
     <h2 class="text-xl font-bold">Loaded Projects</h2>
     <button onclick={saveProject} class="btn group hover:bg-blue-600 p-2 rounded-lg">
@@ -76,8 +84,8 @@
         <Save class="group-hover:text-white"/>
       {/if}
     </button>
-
   </div>
+
   {#if loading}
     <p>Loading..</p>
   {:else if error}
@@ -85,6 +93,7 @@
   {:else if projects.length === 0}
     <p class="text-gray-500">No projects found</p>
   {:else}
+    <div class="flex-col flex-1 min-h-0 overflow-y-auto">
     <ul class="space-y-2">
       {#each projects as project}
         <li class="border rounded-lg flex items-center h-10 overflow-hidden">
@@ -96,5 +105,9 @@
         </li>
       {/each}
     </ul>
+    </div>
   {/if}
+  {#if savingResponse}
+    <p class="bg-green font-xl">{savingResponse}</p>
+    {/if}
 </div>
