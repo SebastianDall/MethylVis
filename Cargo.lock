@@ -518,6 +518,7 @@ dependencies = [
  "axum",
  "axum-extra",
  "csv",
+ "epimetheus-methylome",
  "mag_core",
  "serde",
  "serde_json",
