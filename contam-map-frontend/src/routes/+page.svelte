@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Bins from "../components/Bins.svelte";
-	import Contigs from "../components/Contigs.svelte";
+    import Motifs from "../components/Motifs.svelte";
 	import Heatmap from "../components/Heatmap.svelte";
 	import LoadedProjects from "../components/LoadedProjects.svelte";
 	import LoadProject from "../components/LoadProject.svelte";
@@ -8,8 +8,10 @@
 
     let refreshKey = $state(0);
     let contigs = $state<string[]>([]);
+    let allMotifs = $state<string[]>([]);
     let selectedProject = $state('');
     let selectedContigs = $state<string[]>([]);
+    let selectedMotifs = $state<string[]>([]);
     let selectedBin = $state<string[] | null>(null);
 
 	function onProjectUpdate() {
@@ -34,14 +36,14 @@
 				<LoadedProjects {refreshKey} {selectedProject} {onProjectSelect}/>
 			</div>
 		</div>
-		<Heatmap {selectedProject} {selectedContigs} {selectedBin}/>
+		<Heatmap {selectedProject} bind:allMotifs bind:selectedContigs bind:selectedBin bind:selectedMotifs />
 
 		<div class="flex flex-col h-full items-center justify-center">
 			<div class="flex flex-1 w-64 bg-white rounded-lg mb-4 overflow-y-auto">
 				<Bins {selectedProject} bind:selectedContigs bind:contigs bind:selectedBin/>
 			</div>
 			<div class="flex flex-1 w-64 bg-white rounded-lg overflow-y-auto">
-				<Contigs {selectedProject} bind:selectedContigs {contigs}/>
+                <Motifs bind:selectedMotifs motifs={allMotifs}/>
 			</div>
 		</div>
 

@@ -10,7 +10,7 @@
 	import type { ContigId } from "../bindings/ContigId";
 	import type { ContigAssignment } from "../bindings/ContigAssignment";
 	
-  let { selectedProject, selectedContigs, selectedBin } = $props();
+  let { selectedProject, selectedContigs = $bindable([]), selectedBin = $bindable(), allMotifs = $bindable([]), selectedMotifs = $bindable([]) } = $props();
   let loading = $state(false);
   let plotting = $state(false);
   let error = $state("");
@@ -20,10 +20,11 @@
   let minNMotifObs = $state<number | null>(null);
   let minVariance = $state<number | null>(null);
   let minCoverage = $state<number | null>(null);
+  let minMeth = $state<number | null>(null);
 
   let binName = $state("");
   
-  let heatmapData = $state<HeatmapData | null>(null);
+  let fullHeatmapData = $state<HeatmapData | null>(null);
   let plotDiv: HTMLDivElement;
   let Plotly: any;
 
@@ -46,15 +47,15 @@
 
 function updateAssignment(contigId: string, assignment: Assignment) {
     console.log("I was clicked", contigId, assignment);
-    if (!heatmapData) return;
-    if (!heatmapData.metadata) {
+    if (!fullHeatmapData) return;
+    if (!fullHeatmapData.metadata) {
         alert("No metadata instance found.");
         return;
     }
 
 
-    heatmapData!.metadata[contigId]!.assignment = assignment;
-    console.log(heatmapData?.metadata[contigId]?.assignment)
+    fullHeatmapData!.metadata[contigId]!.assignment = assignment;
+    console.log(fullHeatmapData?.metadata[contigId]?.assignment)
     renderHeatmap();
   }
 
@@ -77,6 +78,7 @@ function updateAssignment(contigId: string, assignment: Assignment) {
        "min_n_motif_obs": minNMotifObs,
        "min_motif_variance": minVariance,
        "min_coverage": minCoverage,
+       "min_methylation_value": minMeth,
     } as MethDataFilters;
 
     console.log(dataQuery);
@@ -95,8 +97,10 @@ function updateAssignment(contigId: string, assignment: Assignment) {
         throw new Error(error.message);
       }
 
-      heatmapData = await response.json() as HeatmapData;
+      fullHeatmapData = await response.json() as HeatmapData;
       loading = false;
+      selectedMotifs = fullHeatmapData.motifs;
+      allMotifs = selectedMotifs;
       renderHeatmap();
     } catch (err) {
       if (err instanceof Error) {
@@ -109,45 +113,75 @@ function updateAssignment(contigId: string, assignment: Assignment) {
     }
   }
 
+  let filteredHeatmapData = $derived.by(() => {
+        if (!fullHeatmapData || !selectedMotifs) return null;
+
+        const selectedMotifsSet = new Set(selectedMotifs);
+        const selectedIndices = fullHeatmapData.motifs.map((motif, index) => selectedMotifsSet.has(motif) ? index : -1).filter(i => i !== -1);
+
+        const filteredMotifs = selectedIndices.map(i => fullHeatmapData.motifs[i]);
+        const filteredMatrix = fullHeatmapData.matrix.map(row => selectedIndices.map(i => row[i]));
+
+        return {
+            ...fullHeatmapData,
+            motifs: filteredMotifs,
+            matrix: filteredMatrix,
+        };
+      });
+
+  $effect(() => {
+      selectedMotifs;
+      if (filteredHeatmapData) {
+          renderHeatmap();
+      }
+  });
+
   function renderHeatmap() {
-    if (!heatmapData || !Plotly || !plotDiv) return;
+    if (!filteredHeatmapData || !Plotly || !plotDiv) return;
     plotting = true;
 
     const plotData = [{
-      x: heatmapData.motifs,
-      y: heatmapData.contigs,
-      z: heatmapData.matrix,
-      type: "heatmap" as const,
-      colorscale: "Viridis",
-      hoverongaps: false,
-    }];
+  x: filteredHeatmapData.motifs,
+  y: filteredHeatmapData.contigs,
+  z: filteredHeatmapData.matrix,
+  type: "heatmap" as const,
+  colorscale: "Magma",
+  // colorscale: [
+  //   [0, 'rgb(255, 255, 255)'],     // 0 = white
+  //   [0.5, 'rgb(100, 100, 255)'],   // 0.5 = light blue
+  //   [1, 'rgb(0, 0, 139)']          // 1 = dark blue
+  // ],
+  zmin: 0,
+  zmax: 1,
+  hoverongaps: false,
+}];
 
-    const layout = {
-      title: 'Methylation Heatmap',
-      xaxis: {
-         title: "Motifs",
-         tickangle: -45,
-         automargin: true,
-      },
-      yaxis: {
-         title: "Contigs",
-         automargin: true,
-      },
-    }
+const layout = {
+  title: 'Methylation Heatmap',
+  xaxis: {
+     title: "Motifs",
+     tickangle: -45,
+     automargin: true,
+  },
+  yaxis: {
+     title: "Contigs",
+     automargin: true,
+  },
+}
 
-    Plotly.newPlot(plotDiv, plotData,layout);
-    plotting=false;
-  }
+Plotly.react(plotDiv, plotData, layout);
+plotting=false;
+}
 
-  async function sendAssignments() {
-    if(!heatmapData || !heatmapData.metadata) return;
-    let updatedBin = {
-        bin: binName,
-        contigs: [] as ContigAssignment[],
-    };
+async function sendAssignments() {
+if(!fullHeatmapData || !fullHeatmapData.metadata) return;
+let updatedBin = {
+    bin: binName,
+    contigs: [] as ContigAssignment[],
+};
 
-    for (const c of selectedContigs) {
-        const assignment = heatmapData.metadata[c].assignment;
+for (const c of selectedContigs) {
+    const assignment = fullHeatmapData.metadata[c].assignment;
         if (!assignment || assignment == "None") {
             saveError = "All contigs must have an assignment";
             return;
@@ -191,23 +225,53 @@ function updateAssignment(contigId: string, assignment: Assignment) {
   
 
   function setToContamination() {
-    if(!heatmapData || !heatmapData.metadata) return;
+    if(!fullHeatmapData || !fullHeatmapData.metadata) return;
 
-    Object.values(heatmapData.metadata).forEach(metadata => {
+    Object.values(fullHeatmapData.metadata).forEach(metadata => {
       if (metadata?.assignment === "None") {
         metadata.assignment = "Contamination";
       }
     });
   }
   function setToClean() {
-    if(!heatmapData || !heatmapData.metadata) return;
+    if(!fullHeatmapData || !fullHeatmapData.metadata) return;
 
-    Object.values(heatmapData.metadata).forEach(metadata => {
+    Object.values(fullHeatmapData.metadata).forEach(metadata => {
       if (metadata?.assignment === "None") {
         metadata.assignment = "Clean";
       }
     });
   }
+    function clearSelectedContigs() {
+        selectedContigs = [];
+    }
+    function selectAllContigs() {
+        if (!fullHeatmapData) return;
+        selectedContigs = fullHeatmapData.contigs;
+    }
+
+  function toggleContig(contig_id: string) {
+      if (!selectedContigs.includes(contig_id)) {
+        selectedContigs = [...selectedContigs, contig_id];
+        console.log("Added. New selectedContigs:", selectedContigs);
+      } else {
+        selectedContigs = selectedContigs.filter((c) => c !== contig_id);
+        console.log("Removed. New selectedContigs:", selectedContigs);
+      }
+  }
+
+    $effect(() => {
+        const currentSelectedContigs = selectedContigs;
+        const currentFullHeatmapData = fullHeatmapData;
+        const currentSelectedBin = selectedBin;
+        if (!currentFullHeatmapData || !currentSelectedBin) return;
+
+        const allContigsInBin = currentFullHeatmapData.contigs;
+        const allSelected = allContigsInBin.every(contig => currentSelectedContigs.includes(contig));
+        
+        binName = allSelected ? currentSelectedBin : "";
+
+        });
 </script>
 
 
@@ -225,7 +289,7 @@ function updateAssignment(contigId: string, assignment: Assignment) {
 
       {:else if error}
           <p class="text-red-500">{error}</p>
-      {:else if !heatmapData}
+      {:else if !fullHeatmapData}
         <p>Select contig and click update heatmap</p>
       {/if}
       <div class="flex flex-1 w-full" bind:this={plotDiv}></div>
@@ -262,6 +326,16 @@ function updateAssignment(contigId: string, assignment: Assignment) {
           class="w-full mt-1 px-3 py-2 border rounded"
         />
       </label>
+      <label class="block mb-4">
+        <span class="text-sm font-medium">Minimum motif methylation value</span>
+        <input
+          type="number"
+          bind:value={minMeth}
+          placeholder="e.g. 0.1"
+          class="w-full mt-1 px-3 py-2 border rounded"
+        />
+      </label>
+
 
     
       <div class="flex justify-between space-x-2">
@@ -274,8 +348,10 @@ function updateAssignment(contigId: string, assignment: Assignment) {
       </div>
     </div>
     <div class="flex flex-1 flex-col min-h-0 align-center items-center bg-white rounded-lg p-4">
-      <div class="flex w-full justify-between items-center">
+      <div class="flex w-full justify-between items-center mb-2">
         <h3 class="font-bold text-lg">Metadata</h3>
+        <button class="p-1 hover:bg-gray-300 rounded-lg" onclick={clearSelectedContigs}>Clear</button>
+        <button class="p-1 hover:bg-gray-300 rounded-lg" onclick={selectAllContigs}>All</button>
         <button class="p-1 hover:bg-gray-300 rounded-lg" onclick={setToClean}>✅</button>
         <button class="p-1 hover:bg-gray-300 rounded-lg" onclick={setToContamination}>⚠️</button>
         <button disabled={!binName} class="group hover:bg-blue-600 p-2 rounded-lg {!binName ? 'bg-red-600' : ''}" onclick={sendAssignments}><Send class="group-hover:text-white" /></button>
@@ -292,12 +368,12 @@ function updateAssignment(contigId: string, assignment: Assignment) {
 
       <div class="flex-1 min-h-0 w-full">
         <div class="h-full overflow-y-auto">
-        {#if heatmapData}
+        {#if fullHeatmapData}
             <ul class="space-y-2">
-            {#each heatmapData.contigs.toReversed() as contigId}
-            {@const metadata = heatmapData.metadata?.[contigId]}
+            {#each fullHeatmapData.contigs.toReversed() as contigId}
+            {@const metadata = fullHeatmapData.metadata?.[contigId]}
                 <li class="border rounded-lg">
-                  <div class="flex items-center justify-between space-x-2">
+                  <div onclick={() => toggleContig(contigId)} class="flex items-center justify-between space-x-2 {!selectedContigs.includes(contigId) ? 'bg-gray-300' : ''}">
                     <p class="px-2">{contigId} | {assignmentLabels[metadata?.assignment ?? "None"]} | {metadata?.mean_coverage?.toFixed(1) ?? "N/A"}</p>
                     <Dropdown menuItems={assignments} value={metadata?.assignment} onItemSelect={(assignment: Assignment) => updateAssignment(contigId, assignment)}/>
                   </div>
