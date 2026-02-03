@@ -24,7 +24,7 @@ impl Contig {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, TS, Default, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, TS, Default, PartialEq, Eq, Copy)]
 #[ts(export, export_to = "../../../contam-map-frontend/src/bindings/")]
 pub enum Assignment {
     #[default]
