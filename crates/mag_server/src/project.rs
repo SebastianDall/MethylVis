@@ -301,6 +301,29 @@ impl Project {
             contig_meth_matrix.push(meth_values);
         }
 
+        if let Some(f) = filters.min_methylation_value {
+            let mut motifs_passing_filter = Vec::new();
+            for i in 0..motif_vec.len() {
+                let max_meth_value = contig_meth_matrix
+                    .iter()
+                    .filter_map(|row| row[i])
+                    .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
+                if max_meth_value.map_or(false, |max_val| max_val >= f) {
+                    motifs_passing_filter.push(i);
+                }
+            }
+
+            motif_vec = motifs_passing_filter
+                .iter()
+                .map(|idx| motif_vec[*idx])
+                .collect();
+            contig_meth_matrix = contig_meth_matrix
+                .iter()
+                .map(|row| motifs_passing_filter.iter().map(|&i| row[i]).collect())
+                .collect()
+        };
+
         if let Some(f) = filters.min_motif_variance {
             let mut retained_motif_idxs = Vec::new();
             for motif_idx in 0..motif_vec.len() {

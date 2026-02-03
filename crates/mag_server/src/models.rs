@@ -100,6 +100,7 @@ pub struct MethDataFilters {
     pub min_n_motif_obs: Option<i32>,
     pub min_motif_variance: Option<f64>,
     pub min_coverage: Option<f64>,
+    pub min_methylation_value: Option<f64>,
 }
 
 #[derive(Serialize, Debug, TS)]
