@@ -140,12 +140,12 @@ pub async fn update_contig_metadata(
 pub async fn save_contig_metadata(
     State(shared_state): State<SharedState>,
     Json(project_id): Json<String>,
-) -> Result<(), ApiError> {
+) -> Result<Json<String>, ApiError> {
     let state = shared_state.lock().unwrap();
 
     let project = state.get_project(&project_id)?;
 
     project.save_metadata()?;
 
-    Ok(())
+    Ok(Json("Metadata saved successfully".to_string()))
 }
