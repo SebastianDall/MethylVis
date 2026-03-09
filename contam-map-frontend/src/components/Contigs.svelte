@@ -23,22 +23,12 @@
       }
   }
 
-  // $effect(() => {
-  //   selectedContigs;
-  //   contigs = contigs.filter((c) => !selectedContigs.includes(c));
-  //   contigs = [...selectedContigs, ...contigs];
-    
-  // })
   let orderedContigs = $derived.by(() => {
     let selectedSet = new Set(selectedContigs);
     const remaining = contigs.filter((c) => !selectedSet.has(c));
     return [...selectedContigs, ...remaining];
   })
   let selectedSet = $derived(new Set(selectedContigs));
-
-  // function refresh() {
-  //   fetchTrigger += 1;
-  // }
 </script>
 
 
