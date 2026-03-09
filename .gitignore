@@ -1,4 +1,6 @@
 /target
+deploy
+build
 .direnv
 
 test_data

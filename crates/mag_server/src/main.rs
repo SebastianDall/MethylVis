@@ -1,10 +1,12 @@
 pub mod errors;
 pub mod handlers;
 pub mod models;
-pub mod routes;
 pub mod project;
+pub mod routes;
 
 use std::sync::{Arc, Mutex};
+
+use tracing::info;
 
 use crate::{models::AppState, routes::create_api_router};
 
@@ -31,5 +33,6 @@ async fn main() {
     let app = create_api_router(shared_state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    info!("App served on 127.0.0.1:3000");
     axum::serve(listener, app).await.unwrap();
 }

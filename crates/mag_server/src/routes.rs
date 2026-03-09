@@ -2,17 +2,20 @@ use axum::{
     Router,
     routing::{get, post},
 };
+use tower::ServiceExt;
+use tower_http::services::ServeDir;
 
 use crate::{
     SharedState,
     handlers::{
-        get_bin_metadata, get_contigs_in_bin, get_projects,
-        load_project, new_project_handler, query_heatmap_data, save_contig_metadata,
-        update_contig_metadata,
+        get_bin_metadata, get_contigs_in_bin, get_projects, load_project, new_project_handler,
+        query_heatmap_data, save_contig_metadata, update_contig_metadata,
     },
 };
 
 pub fn create_api_router(state: SharedState) -> Router {
+    let static_files = ServeDir::new("build").not_found_service(ServeDir::new("build/index.html"));
+
     let api_routes = Router::new()
         .route("/projects", get(get_projects))
         .route("/projects/create", post(new_project_handler))
@@ -33,7 +36,10 @@ pub fn create_api_router(state: SharedState) -> Router {
             post(update_contig_metadata),
         );
 
-    let router = Router::new().nest("/api", api_routes).with_state(state);
+    let router = Router::new()
+        .nest("/api", api_routes)
+        .nest_service("/app", static_files)
+        .with_state(state);
 
     router
 }
